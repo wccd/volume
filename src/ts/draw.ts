@@ -331,13 +331,16 @@ class DrawBar extends Base{
 }
 
 class DrawBall extends Base{
+    debug: boolean = false
     _zero: number = 1e-15
     _size: number = 10
     ma: WMatrix = new WMatrix()
     barWidth: number = 0
+    canvasHeight: number = 0
     power: number = 0
     angle: number = 0
     resultS: number = 0
+    maxA: number = 0
     playDone: Function | null = null
     // animation
     key: number = 0
@@ -353,6 +356,7 @@ class DrawBall extends Base{
 
     init(obj: any) {
         this.barWidth = obj.barWidth;
+        this.canvasHeight = obj.canvasHeight;
         this.translate(obj.barPosition[0], obj.barPosition[1]);
         this.step = 1 / 60 / this.time;
     }
@@ -366,6 +370,7 @@ class DrawBall extends Base{
             sin = Math.sin(angle);
         s = 2 * this.barWidth * this.power * cos * sin
         this.resultS = s;
+        this.maxA = this.canvasHeight / 2 * 4 / this.resultS**2; // y = a * (x / 2) * (x / 2 - s) <= canvasH / 2 
     }
 
     setPlayDone(f: Function) {
@@ -381,10 +386,13 @@ class DrawBall extends Base{
         let angle =  this.angle * Math.PI / 180;
         let tan = Math.tan(angle);
         tan = 1 - tan <= this._zero ? 1 : tan
+        let maxA = this.maxA
         let s = this.resultS,
             x_middle = s / 2,
-            a =  x_middle == 0 ? 0 : -tan /  x_middle,
-            y = a * x * (x - s) * -1;
+            // a = x_middle == 0 ? 0 : tan /  x_middle,
+            a = this.power * maxA,
+            y = a * x * (x - s);
+        console.log(a)
         return isNaN(y) ? 0 : y
     }
 
@@ -395,8 +403,15 @@ class DrawBall extends Base{
         let points = []
             points.push([
                 x,
-                this.getPoints(x)
+                y
             ])
+        if(this.debug) {
+            for(let i = 0; i < 1; i+=this.step) {
+                let x = i * this.resultS,
+                    y = this.getPoints(x);
+                points.push([x, y])
+            }
+        }
         points = points.map(item => this.ma.transformXY(item[0], item[1]))
         ctx.beginPath();
         for(let item of points) {
@@ -498,6 +513,7 @@ export class Draw {
         let ballObj = {
             width: obj.ballWidth || obj.barWidth / 15,
             height: obj.ballHeight || obj.barWidth / 20,
+            canvasHeight: obj.canvasHeight,
             barWidth: barObj.width,
             ballDuration: obj.ballDuration || 1,
             barPosition: [obj.iconWidth, obj.iconHeight / 2],
